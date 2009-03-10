@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 import xmlrpclib
 import wx
@@ -18,17 +18,19 @@ if (port):
     url += ":%s" % (str(port))
 url += path + "/login/xmlrpc"
 
+
 class TicketCreator(threading.Thread):
-    def __init__(self, t_summary, t_milestone, t_list, t_list_lock):
+    def __init__(self, t_summary, t_description, t_milestone, t_list, t_list_lock):
         super(TicketCreator, self).__init__()
         self.m = t_milestone
         self.s = t_summary
+        self.d = t_description
         self.t_list = t_list
         self.t_list_lock = t_list_lock
     
     def run(self):
         svr = xmlrpclib.ServerProxy(url)
-        svr.ticket.create(self.s, "", {"type": "task", "milestone": self.m}, True)
+        svr.ticket.create(self.s, self.d, {"type": "task", "milestone": self.m}, True)
         self.t_list_lock.acquire()
         self.t_list.Append((self.m, self.s))
         self.t_list_lock.release()
@@ -54,8 +56,8 @@ class TicketPanel(wx.Panel):
         
         # Create the ticket summary label and box
         summary_box = wx.BoxSizer(wx.HORIZONTAL)
-        summary_label = wx.StaticText(self, wx.ID_ANY, "Ticket Summary:")
-        self.summary_txt_ctrl = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_PROCESS_ENTER)
+        summary_label = wx.StaticText(self, wx.ID_ANY, "Ticket Description:")
+        self.summary_txt_ctrl = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_PROCESS_ENTER | wx.TE_MULTILINE)
         self.Bind(wx.EVT_TEXT_ENTER, self.create_ticket)
         summary_box.Add(summary_label, 0, wx.RIGHT, 8)
         summary_box.Add(self.summary_txt_ctrl, 1)
@@ -79,9 +81,10 @@ class TicketPanel(wx.Panel):
         if (self.current_milestone_index == None):
             print "Select a milestone from the list, move the focus to the text box and press enter to create the ticket."
         else:
-            s = event.GetString()
+            d = event.GetString()
+            s = d.split('.')[0]
             m = self.milestones[self.current_milestone_index]
-            tc = TicketCreator(s, m, self.t_list, self.t_list_lock)
+            tc = TicketCreator(s, d, m, self.t_list, self.t_list_lock)
             tc.start()
             self.summary_txt_ctrl.Clear()
     
